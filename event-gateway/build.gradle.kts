@@ -32,6 +32,9 @@ dependencies {
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.wiremock:wiremock-standalone:3.9.1")
+    // Only for the end-to-end test, which boots a real Account Service instance
+    // in-process; account-service is still independently built and run on its own.
+    testImplementation("com.schwab.eventledger:account-service:0.1.0")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
