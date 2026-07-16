@@ -6,7 +6,10 @@ import com.schwab.eventledger.account.dto.ApplyTransactionRequest;
 import com.schwab.eventledger.account.dto.BalanceResponse;
 import com.schwab.eventledger.account.dto.TransactionResponse;
 import com.schwab.eventledger.account.exception.AccountNotFoundException;
+import com.schwab.eventledger.account.metrics.AccountMetrics;
 import com.schwab.eventledger.account.repository.TransactionRepository;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
@@ -26,9 +29,13 @@ class AccountServiceTest {
 
     private AccountService accountService;
 
+    @BeforeEach
+    void setUp() {
+        accountService = new AccountService(transactionRepository, new AccountMetrics(new SimpleMeterRegistry()));
+    }
+
     @Test
     void balanceIsSumOfCreditsMinusDebits() {
-        accountService = new AccountService(transactionRepository);
         Instant now = Instant.now();
 
         accountService.applyTransaction("acct-1", request("evt-1", TransactionType.CREDIT, "150.00", now));
@@ -42,7 +49,6 @@ class AccountServiceTest {
 
     @Test
     void balanceIsOrderIndependentRegardlessOfArrivalOrder() {
-        accountService = new AccountService(transactionRepository);
         Instant base = Instant.now();
 
         // Arrives out of chronological order: event timestamped "later" is applied first.
@@ -56,7 +62,6 @@ class AccountServiceTest {
 
     @Test
     void recentTransactionsAreOrderedByEventTimestampAscendingRegardlessOfArrivalOrder() {
-        accountService = new AccountService(transactionRepository);
         Instant base = Instant.now().truncatedTo(ChronoUnit.SECONDS);
 
         accountService.applyTransaction("acct-3", request("evt-b", TransactionType.CREDIT, "50.00", base.plusSeconds(5)));
@@ -72,7 +77,6 @@ class AccountServiceTest {
 
     @Test
     void resubmittingSameEventIdDoesNotAlterBalance() {
-        accountService = new AccountService(transactionRepository);
         Instant now = Instant.now();
         ApplyTransactionRequest request = request("evt-dup", TransactionType.CREDIT, "150.00", now);
 
@@ -86,7 +90,6 @@ class AccountServiceTest {
 
     @Test
     void balanceQueryForUnknownAccountThrowsNotFound() {
-        accountService = new AccountService(transactionRepository);
 
         assertThatThrownBy(() -> accountService.getBalance("does-not-exist"))
                 .isInstanceOf(AccountNotFoundException.class);

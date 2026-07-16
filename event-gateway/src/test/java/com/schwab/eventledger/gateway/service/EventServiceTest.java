@@ -8,7 +8,9 @@ import com.schwab.eventledger.gateway.dto.EventResponse;
 import com.schwab.eventledger.gateway.dto.TransactionResult;
 import com.schwab.eventledger.gateway.exception.AccountServiceUnavailableException;
 import com.schwab.eventledger.gateway.exception.EventNotFoundException;
+import com.schwab.eventledger.gateway.metrics.EventMetrics;
 import com.schwab.eventledger.gateway.repository.EventRepository;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -43,7 +45,8 @@ class EventServiceTest {
         when(accountServiceClient.applyTransaction(anyString(), any(ApplyTransactionRequest.class)))
                 .thenReturn(new TransactionResult("evt", "acct", EventType.CREDIT, BigDecimal.TEN, "USD",
                         Instant.now(), Instant.now(), false));
-        eventService = new EventService(eventRepository, accountServiceClient, objectMapper);
+        eventService = new EventService(eventRepository, accountServiceClient,
+                new EventMetrics(new SimpleMeterRegistry()), objectMapper);
     }
 
     @Test

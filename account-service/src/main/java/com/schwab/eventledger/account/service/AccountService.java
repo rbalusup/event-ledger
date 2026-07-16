@@ -7,6 +7,7 @@ import com.schwab.eventledger.account.dto.ApplyTransactionRequest;
 import com.schwab.eventledger.account.dto.BalanceResponse;
 import com.schwab.eventledger.account.dto.TransactionResponse;
 import com.schwab.eventledger.account.exception.AccountNotFoundException;
+import com.schwab.eventledger.account.metrics.AccountMetrics;
 import com.schwab.eventledger.account.repository.TransactionRepository;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -19,14 +20,17 @@ import java.util.List;
 public class AccountService {
 
     private final TransactionRepository transactionRepository;
+    private final AccountMetrics accountMetrics;
 
-    public AccountService(TransactionRepository transactionRepository) {
+    public AccountService(TransactionRepository transactionRepository, AccountMetrics accountMetrics) {
         this.transactionRepository = transactionRepository;
+        this.accountMetrics = accountMetrics;
     }
 
     public TransactionResponse applyTransaction(String accountId, ApplyTransactionRequest request) {
         var existing = transactionRepository.findByEventId(request.eventId());
         if (existing.isPresent()) {
+            accountMetrics.recordTransactionApplied("duplicate");
             return TransactionResponse.from(existing.get(), true);
         }
 
@@ -42,12 +46,14 @@ public class AccountService {
 
         try {
             Transaction saved = transactionRepository.save(transaction);
+            accountMetrics.recordTransactionApplied("applied");
             return TransactionResponse.from(saved, false);
         } catch (DataIntegrityViolationException e) {
             // Concurrent request applied the same eventId first; unique constraint on
             // event_id is the actual idempotency guard, this is just the race-loser path.
             Transaction winner = transactionRepository.findByEventId(request.eventId())
                     .orElseThrow(() -> e);
+            accountMetrics.recordTransactionApplied("duplicate");
             return TransactionResponse.from(winner, true);
         }
     }

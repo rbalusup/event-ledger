@@ -7,7 +7,9 @@ import com.schwab.eventledger.gateway.domain.Event;
 import com.schwab.eventledger.gateway.dto.ApplyTransactionRequest;
 import com.schwab.eventledger.gateway.dto.CreateEventRequest;
 import com.schwab.eventledger.gateway.dto.EventResponse;
+import com.schwab.eventledger.gateway.exception.AccountServiceUnavailableException;
 import com.schwab.eventledger.gateway.exception.EventNotFoundException;
+import com.schwab.eventledger.gateway.metrics.EventMetrics;
 import com.schwab.eventledger.gateway.repository.EventRepository;
 import org.springframework.stereotype.Service;
 
@@ -20,31 +22,39 @@ public class EventService {
 
     private final EventRepository eventRepository;
     private final AccountServiceClient accountServiceClient;
+    private final EventMetrics eventMetrics;
     private final ObjectMapper objectMapper;
 
     public EventService(EventRepository eventRepository, AccountServiceClient accountServiceClient,
-                         ObjectMapper objectMapper) {
+                         EventMetrics eventMetrics, ObjectMapper objectMapper) {
         this.eventRepository = eventRepository;
         this.accountServiceClient = accountServiceClient;
+        this.eventMetrics = eventMetrics;
         this.objectMapper = objectMapper;
     }
 
     public EventResponse submitEvent(CreateEventRequest request) {
         var existing = eventRepository.findById(request.eventId());
         if (existing.isPresent()) {
+            eventMetrics.recordEventSubmitted("duplicate");
             return toResponse(existing.get(), true);
         }
 
         // Apply downstream first; only persist locally once the Account Service has
         // confirmed the transaction, so a failed call leaves nothing behind for a
         // legitimate client retry with the same eventId to conflict with.
-        accountServiceClient.applyTransaction(request.accountId(), new ApplyTransactionRequest(
-                request.eventId(),
-                request.type(),
-                request.amount(),
-                request.currency(),
-                request.eventTimestamp()
-        ));
+        try {
+            accountServiceClient.applyTransaction(request.accountId(), new ApplyTransactionRequest(
+                    request.eventId(),
+                    request.type(),
+                    request.amount(),
+                    request.currency(),
+                    request.eventTimestamp()
+            ));
+        } catch (AccountServiceUnavailableException e) {
+            eventMetrics.recordEventSubmitted("account_service_unavailable");
+            throw e;
+        }
 
         Event event = new Event(
                 request.eventId(),
@@ -58,6 +68,7 @@ public class EventService {
         );
 
         Event saved = eventRepository.save(event);
+        eventMetrics.recordEventSubmitted("created");
         return toResponse(saved, false);
     }
 
