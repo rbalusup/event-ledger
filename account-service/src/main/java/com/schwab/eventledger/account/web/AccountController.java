@@ -5,6 +5,7 @@ import com.schwab.eventledger.account.dto.ApplyTransactionRequest;
 import com.schwab.eventledger.account.dto.BalanceResponse;
 import com.schwab.eventledger.account.dto.TransactionResponse;
 import com.schwab.eventledger.account.service.AccountService;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -25,6 +26,9 @@ public class AccountController {
         this.accountService = accountService;
     }
 
+    @Operation(summary = "Apply a transaction to an account",
+            description = "Idempotent by eventId: resubmitting the same eventId returns the original transaction "
+                    + "with alreadyApplied=true and 200 OK instead of applying it again.")
     @PostMapping("/{accountId}/transactions")
     public ResponseEntity<TransactionResponse> applyTransaction(
             @PathVariable String accountId,
@@ -34,11 +38,15 @@ public class AccountController {
         return ResponseEntity.status(status).body(response);
     }
 
+    @Operation(summary = "Get the current balance for an account",
+            description = "Balance = sum(CREDIT amounts) - sum(DEBIT amounts), recomputed fresh on every call.")
     @GetMapping("/{accountId}/balance")
     public BalanceResponse getBalance(@PathVariable String accountId) {
         return accountService.getBalance(accountId);
     }
 
+    @Operation(summary = "Get account details and transaction history",
+            description = "Transactions are ordered by eventTimestamp ascending, regardless of the order they were applied in.")
     @GetMapping("/{accountId}")
     public AccountDetailResponse getAccountDetails(@PathVariable String accountId) {
         return accountService.getAccountDetails(accountId);

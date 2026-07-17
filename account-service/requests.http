@@ -1,0 +1,71 @@
+### Account Service — example requests
+### Works with the VS Code "REST Client" extension or IntelliJ's built-in HTTP Client.
+### Start the service first: ./gradlew bootRun (or docker compose up)
+
+@baseUrl = http://localhost:8081
+
+### Apply a CREDIT transaction
+POST {{baseUrl}}/accounts/acct-123/transactions
+Content-Type: application/json
+
+{
+  "eventId": "evt-001",
+  "type": "CREDIT",
+  "amount": 150.00,
+  "currency": "USD",
+  "eventTimestamp": "2026-05-15T14:02:11Z"
+}
+
+### Resubmit the same eventId — idempotent, 200 OK with alreadyApplied=true, balance unchanged
+POST {{baseUrl}}/accounts/acct-123/transactions
+Content-Type: application/json
+
+{
+  "eventId": "evt-001",
+  "type": "CREDIT",
+  "amount": 150.00,
+  "currency": "USD",
+  "eventTimestamp": "2026-05-15T14:02:11Z"
+}
+
+### Apply a DEBIT transaction
+POST {{baseUrl}}/accounts/acct-123/transactions
+Content-Type: application/json
+
+{
+  "eventId": "evt-002",
+  "type": "DEBIT",
+  "amount": 40.00,
+  "currency": "USD",
+  "eventTimestamp": "2026-05-15T15:00:00Z"
+}
+
+### Get current balance (150.00 - 40.00 = 110.00)
+GET {{baseUrl}}/accounts/acct-123/balance
+
+### Get account details + full transaction history
+GET {{baseUrl}}/accounts/acct-123
+
+### Balance for an account with no transactions — 404
+GET {{baseUrl}}/accounts/does-not-exist/balance
+
+### Validation error — amount must be greater than 0
+POST {{baseUrl}}/accounts/acct-123/transactions
+Content-Type: application/json
+
+{
+  "eventId": "evt-bad",
+  "type": "CREDIT",
+  "amount": -5,
+  "currency": "USD",
+  "eventTimestamp": "2026-05-15T14:02:11Z"
+}
+
+### Health check
+GET {{baseUrl}}/health
+
+### OpenAPI spec (JSON)
+GET {{baseUrl}}/v3/api-docs
+
+### Swagger UI (open in a browser, not usable from the HTTP client itself)
+GET {{baseUrl}}/swagger-ui/index.html

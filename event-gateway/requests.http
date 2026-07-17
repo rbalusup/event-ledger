@@ -1,0 +1,91 @@
+### Event Gateway — example requests
+### Works with the VS Code "REST Client" extension or IntelliJ's built-in HTTP Client.
+### Start both services first: docker compose up (or ./gradlew bootRun in each project)
+
+@baseUrl = http://localhost:8080
+
+### Submit a CREDIT event
+POST {{baseUrl}}/events
+Content-Type: application/json
+
+{
+  "eventId": "evt-001",
+  "accountId": "acct-123",
+  "type": "CREDIT",
+  "amount": 150.00,
+  "currency": "USD",
+  "eventTimestamp": "2026-05-15T14:02:11Z",
+  "metadata": {
+    "source": "mainframe-batch",
+    "batchId": "B-9042"
+  }
+}
+
+### Resubmit the same eventId — idempotent, 200 OK with duplicate=true, balance unchanged
+POST {{baseUrl}}/events
+Content-Type: application/json
+
+{
+  "eventId": "evt-001",
+  "accountId": "acct-123",
+  "type": "CREDIT",
+  "amount": 150.00,
+  "currency": "USD",
+  "eventTimestamp": "2026-05-15T14:02:11Z"
+}
+
+### Submit a second event with an EARLIER timestamp (arrives out of order)
+POST {{baseUrl}}/events
+Content-Type: application/json
+
+{
+  "eventId": "evt-000",
+  "accountId": "acct-123",
+  "type": "DEBIT",
+  "amount": 20.00,
+  "currency": "USD",
+  "eventTimestamp": "2026-05-15T10:00:00Z"
+}
+
+### Get a single event by id
+GET {{baseUrl}}/events/evt-001
+
+### List events for the account — ordered by eventTimestamp ascending (evt-000 first, despite arriving second)
+GET {{baseUrl}}/events?account=acct-123
+
+### Event that does not exist — 404
+GET {{baseUrl}}/events/does-not-exist
+
+### Validation error — missing required field (eventId)
+POST {{baseUrl}}/events
+Content-Type: application/json
+
+{
+  "accountId": "acct-123",
+  "type": "CREDIT",
+  "amount": 10.00,
+  "currency": "USD",
+  "eventTimestamp": "2026-05-15T14:02:11Z"
+}
+
+### Validation error — unknown event type
+POST {{baseUrl}}/events
+Content-Type: application/json
+
+{
+  "eventId": "evt-bad-type",
+  "accountId": "acct-123",
+  "type": "REFUND",
+  "amount": 10.00,
+  "currency": "USD",
+  "eventTimestamp": "2026-05-15T14:02:11Z"
+}
+
+### Health check
+GET {{baseUrl}}/health
+
+### OpenAPI spec (JSON)
+GET {{baseUrl}}/v3/api-docs
+
+### Swagger UI (open in a browser, not usable from the HTTP client itself)
+GET {{baseUrl}}/swagger-ui/index.html

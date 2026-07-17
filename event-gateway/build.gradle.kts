@@ -27,6 +27,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-aop")
     implementation("net.logstash.logback:logstash-logback-encoder:7.4")
     implementation("io.github.resilience4j:resilience4j-spring-boot3:${property("resilience4jVersion")}")
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.6.0")
 
     runtimeOnly("com.h2database:h2")
 
