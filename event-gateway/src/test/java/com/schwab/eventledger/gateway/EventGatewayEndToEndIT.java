@@ -13,14 +13,20 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.Map;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * True end-to-end test: a real Account Service instance runs in-process (its own
  * Spring context, own embedded H2, own random port) alongside the Gateway's own
  * @SpringBootTest context, and the two talk over real HTTP - no WireMock involved.
+ *
+ * <p>Both services ship a classpath resource literally named {@code application.yml}.
+ * Once account-service's classes are on this module's test classpath (via the
+ * composite build), Spring Boot's classpath scan can resolve either file for
+ * {@code AccountServiceApplication}, so relying on the value in either YAML file here
+ * would be fragile. Everything this nested instance needs (port, its own isolated H2
+ * database) is instead passed as command-line args, which always take the highest
+ * property precedence and win regardless of which application.yml gets picked up.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class EventGatewayEndToEndIT {
@@ -30,8 +36,10 @@ class EventGatewayEndToEndIT {
     // class's own ApplicationContext.
     private static final ConfigurableApplicationContext ACCOUNT_SERVICE_CONTEXT =
             new SpringApplicationBuilder(AccountServiceApplication.class)
-                    .properties(Map.of("server.port", "0"))
-                    .run();
+                    .run(
+                            "--server.port=0",
+                            "--spring.datasource.url=jdbc:h2:mem:e2e-account;DB_CLOSE_DELAY=-1"
+                    );
 
     private static final RestTemplate ACCOUNT_SERVICE_REST_TEMPLATE = new RestTemplate();
 
