@@ -140,6 +140,19 @@ cd event-gateway && ./gradlew test
 | `GET` | `/accounts/{accountId}` | Balance + full transaction history, ordered by `eventTimestamp` ascending |
 | `GET` | `/health` | Service status + H2 connectivity |
 
+### OpenAPI / Swagger UI
+
+Each service exposes a live OpenAPI 3 spec, generated from the controllers via
+springdoc, once running:
+
+- Swagger UI: `http://localhost:8080/swagger-ui/index.html` (Gateway), `http://localhost:8081/swagger-ui/index.html` (Account Service)
+- Raw spec (JSON): `http://localhost:8080/v3/api-docs`, `http://localhost:8081/v3/api-docs`
+
+Each service directory also has a `requests.http` file with a ready-to-run example
+of every endpoint (happy path, idempotent resubmission, validation errors, 404s) —
+usable directly with the VS Code "REST Client" extension or IntelliJ's built-in HTTP
+Client, no Postman collection needed.
+
 ## Resiliency: why a circuit breaker
 
 The Gateway wraps its call to the Account Service in a Resilience4j circuit breaker
