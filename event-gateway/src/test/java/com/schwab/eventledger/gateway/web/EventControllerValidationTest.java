@@ -1,5 +1,6 @@
 package com.schwab.eventledger.gateway.web;
 
+import com.schwab.eventledger.gateway.exception.AccountServiceUnavailableException;
 import com.schwab.eventledger.gateway.exception.EventNotFoundException;
 import com.schwab.eventledger.gateway.service.EventService;
 import org.junit.jupiter.api.Test;
@@ -8,6 +9,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -74,5 +76,19 @@ class EventControllerValidationTest {
         mockMvc.perform(get("/events/missing"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error").value("EVENT_NOT_FOUND"));
+    }
+
+    @Test
+    void returns503WhenAccountServiceIsUnavailable() throws Exception {
+        when(eventService.submitEvent(any()))
+                .thenThrow(new AccountServiceUnavailableException("Account service is unavailable, please retry later",
+                        new RuntimeException("connection refused")));
+        String body = "{\"eventId\":\"evt-1\",\"accountId\":\"acct-1\",\"type\":\"CREDIT\",\"amount\":5,\"currency\":\"USD\",\"eventTimestamp\":\"2026-05-15T14:02:11Z\"}";
+
+        mockMvc.perform(post("/events")
+                        .contentType("application/json")
+                        .content(body))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.error").value("ACCOUNT_SERVICE_UNAVAILABLE"));
     }
 }
