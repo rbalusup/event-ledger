@@ -1,5 +1,7 @@
 # Event Ledger
 
+[![CI](https://github.com/rbalusup/event-ledger/actions/workflows/ci.yml/badge.svg)](https://github.com/rbalusup/event-ledger/actions/workflows/ci.yml)
+
 Two independent Spring Boot microservices that process financial transaction events: an
 **Event Gateway** (public-facing) and an **Account Service** (internal, called only by the
 Gateway).
