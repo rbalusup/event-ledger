@@ -187,14 +187,17 @@ sides) without the setup and dependency surface of a full tracing stack.
 Both services log structured JSON (via `logstash-logback-encoder`): `@timestamp`,
 `level`, `message`, `service`, and `traceId` (via MDC) on every line. Each service also
 exposes one custom Micrometer counter — `gateway.events.submitted` and
-`account.transactions.applied`, both tagged by outcome — via
-`/actuator/metrics/{name}`.
+`account.transactions.applied`, both tagged by outcome — via `/actuator/metrics/{name}`
+and, in Prometheus text format, `/actuator/prometheus` (e.g.
+`http://localhost:8080/actuator/prometheus`, `http://localhost:8081/actuator/prometheus`).
+There's no Prometheus server or Grafana dashboard wired up in this repo — the endpoint
+is there to be scraped by one if you point one at it.
 
 ## Known limitations / out of scope
 
-- No Prometheus/Grafana, Jaeger/Zipkin, rate limiting, async fallback queueing, or
-  contract tests — these were explicitly listed as bonus/optional in the assignment and
-  were left out to keep the core solid within the time budget.
+- No Grafana, Jaeger/Zipkin, rate limiting, async fallback queueing, or contract tests —
+  these were explicitly listed as bonus/optional in the assignment and were left out to
+  keep the core solid within the time budget.
 - Balance/currency handling assumes a single currency per account (taken from the first
   transaction); the assignment's payload doesn't describe multi-currency accounts.
 - The Gateway persists its own `Event` record only *after* the Account Service call
