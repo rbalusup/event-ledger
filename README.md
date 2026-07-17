@@ -112,12 +112,14 @@ cd event-gateway && ./gradlew test
 | Test class | Covers |
 |---|---|
 | `account-service` `AccountServiceTest` | Balance computation (CREDIT − DEBIT), order-independent balance and transaction listing regardless of arrival order, idempotent apply-transaction by `eventId`, 404 on unknown account |
+| `account-service` `AccountServiceConcurrencyTest` | Several threads applying the same `eventId` simultaneously still apply exactly once, with a correct balance and no unhandled exceptions |
 | `account-service` `AccountControllerValidationTest` | 400 on missing/invalid fields, 404 mapping |
 | `account-service` `TraceIdFilterTest` | Trace ID is generated when absent, preserved unchanged when supplied |
 | `event-gateway` `EventServiceTest` | Idempotent event storage, chronological listing regardless of arrival order, metadata round-trip, **no local persistence when the Account Service call fails** |
-| `event-gateway` `EventControllerValidationTest` | 400 on missing/invalid fields, 404 mapping |
-| `event-gateway` `AccountServiceClientCircuitBreakerTest` | Circuit breaker opens after repeated failures and fails fast (no calls reach the downstream while open), then recovers to closed once calls succeed again |
+| `event-gateway` `EventControllerValidationTest` | 400 on missing/invalid fields, 404 mapping, **actual HTTP 503 (not just the exception type) when the Account Service is unavailable** |
+| `event-gateway` `AccountServiceClientCircuitBreakerTest` | Circuit breaker opens after repeated failures and fails fast (no calls reach the downstream while open), recovers to closed once calls succeed again, and a slow-but-up downstream times out via the RestTemplate read timeout before the breaker ever trips |
 | `event-gateway` `TraceIdPropagationTest` | `X-Trace-Id` is generated or passed through, and forwarded to the Account Service on the outbound call |
+| `event-gateway` `GracefulDegradationTest` | Full flow through real HTTP: once the Account Service is unreachable, `POST /events` fails fast with 503 and persists nothing locally, while `GET /events/{id}` and `GET /events?account=` keep working off the Gateway's own data |
 | `event-gateway` `EventGatewayEndToEndIT` | Full real-HTTP flow: submit → balance updated on a real Account Service instance → resubmit is idempotent |
 
 ## API reference

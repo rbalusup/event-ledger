@@ -110,6 +110,25 @@ class AccountServiceClientCircuitBreakerTest {
         assertThat(result.eventId()).isEqualTo("recover-ok");
     }
 
+    @Test
+    void timesOutOnSlowDownstreamBeforeTheBreakerEverTrips() {
+        // 3s response delay exceeds the RestTemplate's 2s read timeout, so this fails on
+        // the very first call - the breaker is still CLOSED, this is purely the client's
+        // own timeout kicking in on a downstream that is up but too slow.
+        wireMockServer.stubFor(post(urlPathMatching("/accounts/.*/transactions"))
+                .willReturn(aResponse().withStatus(201)
+                        .withFixedDelay(3000)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody("""
+                                {"eventId":"evt-slow","accountId":"acct-slow","type":"CREDIT","amount":10.00,
+                                 "currency":"USD","eventTimestamp":"2026-05-15T14:02:11Z",
+                                 "appliedAt":"2026-05-15T14:02:12Z","alreadyApplied":false}
+                                """)));
+
+        assertThatThrownBy(() -> accountServiceClient.applyTransaction("acct-slow", request("evt-slow")))
+                .isInstanceOf(AccountServiceUnavailableException.class);
+    }
+
     private ApplyTransactionRequest request(String eventId) {
         return new ApplyTransactionRequest(eventId, EventType.CREDIT, BigDecimal.TEN, "USD", Instant.now());
     }
